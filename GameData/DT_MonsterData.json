@@ -1,0 +1,20 @@
+﻿[
+  {
+    "Name": "Bear",
+    "StatData": {
+      "MaxHP": 300.0,
+      "AttackDamage": 10.0
+    },
+    "AttackMontage": "/Game/WantedProject/Animation/AM_MonsterAttack.AM_MonsterAttack",
+    "DeadMontage": "/Game/WantedProject/Animation/AM_Dead.AM_Dead",
+    "AnimBlueprint": "/Game/WantedProject/Animation/ABP_WTMonsterBear.ABP_WTMonsterBear_C",
+    "BehaviorTree": "/Game/WantedProject/AI/BT_WTMonster.BT_WTMonster"
+  },
+  {
+    "Name": "Necromancer",
+    "StatData": {
+      "MaxHP": 30000.0,
+      "AttackDamage": 50.0
+    }
+  }
+]
