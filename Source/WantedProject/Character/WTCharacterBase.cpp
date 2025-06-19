@@ -15,6 +15,9 @@ AWTCharacterBase::AWTCharacterBase()
 
 	//PrimaryActorTick.bStartWithTickEnabled = true;
 
+	// 태그 설정.
+	Tags.Add(FName("Player"));
+	
 	// 컨트롤러의 회전을 받아서 설정하는 모드를 모두 해제.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;	

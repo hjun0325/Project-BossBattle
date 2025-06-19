@@ -25,9 +25,9 @@ void AObjectPoolManager::BeginPlay()
 			FObjectPool NewPool;
 			for (int32 i = 0; i < PoolSize; ++i)
 			{
-				// 1. 스폰 파라미터를 설정합니다.
+				// 스폰 파라미터를 설정.
 				FActorSpawnParameters SpawnParams;
-				// 2. 충돌 처리 방법을 '충돌을 무시하고 항상 스폰'으로 변경합니다.
+				// 충돌 처리 방법을 '충돌을 무시하고 항상 스폰'으로 변경.
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 				
 				// 월드에 액터를 스폰.
@@ -49,33 +49,31 @@ void AObjectPoolManager::BeginPlay()
 
 AActor* AObjectPoolManager::AcquirePooledObject(TSubclassOf<AActor> ObjectClass)
 {
-	// 1. [] 연산자 대신 Find 함수를 사용하여 해당 클래스의 풀에 대한 포인터를 가져옵니다.
+	// Find 함수를 사용하여 해당 클래스의 풀에 대한 포인터를 가져온다.
 	FObjectPool* Pool = PoolMap.Find(ObjectClass);
 
-	// 2. 만약 풀이 존재한다면,
+	// 만약 풀이 존재한다면,
 	if (Pool)
 	{
-		// 해당 풀에 있는 모든 오브젝트를 하나씩 확인합니다.
+		// 해당 풀에 있는 모든 오브젝트를 하나씩 확인.
 		for (AActor* Obj : Pool->PooledObjects)
 		{
-			// 오브젝트가 유효하고, 틱이 꺼져있는지(비활성 상태인지) 확인합니다.
+			// 오브젝트가 유효하고, 틱이 꺼져있는지(비활성 상태인지) 확인.
 			if (Obj && !Obj->IsActorTickEnabled()) 
 			{
-				// --- 여기가 가장 중요한 수정 부분 ---
-				// 3. 찾았으면, 반환하기 직전에 '활성화' 함수를 호출하여 깨웁니다.
+				// 찾았으면, 반환하기 직전에 '활성화' 함수를 호출.
 				if (Obj->GetClass()->ImplementsInterface(UWTPoolableObjectInterface::StaticClass()))
 				{
 					IWTPoolableObjectInterface::Execute_OnAcquiredFromPool(Obj);
 				}
                 
-				// 4. 깨어난 오브젝트를 요청한 곳에 전달합니다.
+				// 깨어난 오브젝트를 요청한 곳에 전달.
 				return Obj;
 			}
 		}
 	}
     
 	// 만약 루프를 다 돌았는데도 사용 가능한 오브젝트가 없다면(모두 사용 중이라면),
-	// 경고 로그를 남기고 없다고 알립니다.
 	UE_LOG(LogTemp, Warning, TEXT("No available object in pool for class %s"), *ObjectClass->GetName());
 	return nullptr;
 }

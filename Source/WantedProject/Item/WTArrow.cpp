@@ -5,6 +5,7 @@
 
 #include "Components/BoxComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values
@@ -22,6 +23,10 @@ AWTArrow::AWTArrow()
 	ArrowMesh->SetupAttachment(Root);
 	ArrowMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	//ArrowMesh->SetCollisionObjectType(ECC_GameTraceChannel1);
+
+	// 파티클 컴포넌트를 생성하고 루트에 부착.
+	EffectComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("EffectComponent"));
+	EffectComponent->SetupAttachment(RootComponent);
 	
 	// 박스 컴포넌트 생성.
 	BoxComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComponent"));
@@ -70,4 +75,5 @@ void AWTArrow::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 			UDamageType::StaticClass() // 데미지 유형 (기본값은 UDamageType)
 			);
 	}
+	Destroy();
 }

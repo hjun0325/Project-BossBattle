@@ -25,14 +25,25 @@ struct FMeleeAttackData {
 	GENERATED_BODY()
 
 	// --- 생성자 추가 ---
-	FMeleeAttackData() : Montage(nullptr), DamageMultiplier(0.0f) {}
+	FMeleeAttackData() :
+		Montage(nullptr),
+		DamageMultiplier(1.0f), AttackRange(0.0f), AttackAngle(0.0f) {}
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> Montage;
 
+	// --- 판정 관련 데이터 추가 ---
 	// 데미지 배율 설정.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float DamageMultiplier;
+
+	// 공격의 최대 사거리 (부채꼴의 반지름)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float AttackRange; 
+
+	// 공격의 전체 각도 (예: 90도, 120도)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float AttackAngle;
 };
 
 // 원거리 공격 정보 구조체.

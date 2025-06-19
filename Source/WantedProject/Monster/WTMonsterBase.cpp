@@ -11,6 +11,9 @@
 #include "UI/WTWidgetComponent.h"
 #include "AI/WTAIController.h"
 #include "WTMonsterData.h"
+#include "Kismet/KismetSystemLibrary.h" // SphereOverlapActors를 위해 포함
+#include "Kismet/GameplayStatics.h"      // ApplyDamage를 위해 포함
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 AWTMonsterBase::AWTMonsterBase()
@@ -153,10 +156,16 @@ float AWTMonsterBase::GetAITurnSpeed()
 
 void AWTMonsterBase::MeleeAttack(int32 AttackIndex)
 {
+	if (!CurrentMonsterData.MeleeAttacks.IsValidIndex(AttackIndex)) return;
+
 	// 이동 비활성화.
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	
-	if (!CurrentMonsterData.MeleeAttacks.IsValidIndex(AttackIndex)) return;
+
+	// 현재 근접공격 인덱스 저장.
+	CurrentMeleeAttackIndex = AttackIndex;
+
+	// 새로운 공격이 시작될 때마다, 이전에 맞았던 액터 목록을 초기화.
+	HitActorsInSwing.Empty();
 
 	// 인덱스 값의 공격 종류 설정.
 	const FMeleeAttackData& AttackData = CurrentMonsterData.MeleeAttacks[AttackIndex];
@@ -230,6 +239,105 @@ void AWTMonsterBase::SetAIAttackDelegate(const FAICharacterAttackFinished& InOnA
 	OnAttackFinished = InOnAttackFinished;
 }
 
+void AWTMonsterBase::AttackHitCheck()
+{
+	UE_LOG(LogTemp, Log, TEXT("1"));
+	
+	// 현재 실행 중인 공격의 데이터.
+	if (!CurrentMonsterData.MeleeAttacks.IsValidIndex(CurrentMeleeAttackIndex)) return;
+	const FMeleeAttackData& CurrentAttackData = CurrentMonsterData.MeleeAttacks[CurrentMeleeAttackIndex];
+
+	// 최종 데미지 및 공격 위치 계산
+	const float FinalDamage = CurrentMonsterData.StatData.AttackDamage * CurrentAttackData.DamageMultiplier;
+	
+	// 오버랩으로 찾아낼 액터의 타입을 지정합니다. (플레이어와 같은 Pawn 타입만)
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn));
+
+	// 자기 자신을 공격하는 것을 방지하기 위해, 무시할 액터 목록에 자신을 추가합니다.
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+	
+	// 오버랩된 액터들을 담을 빈 배열을 준비합니다.
+	TArray<AActor*> OverlappedActors;
+
+	// 4. 스피어 오버랩(Sphere Overlap) 실행1
+	// 지정된 위치와 반경 안에 있는 모든 폰(Pawn)을 찾아 OverlappedActors 배열에 담습니다.
+	UKismetSystemLibrary::SphereOverlapActors(
+		GetWorld(),
+		GetActorLocation(),
+		CurrentAttackData.AttackRange, // 최대 사거리를 반경으로 사용
+		ObjectTypes,
+		nullptr,
+		ActorsToIgnore,
+		OverlappedActors
+	);
+	
+	DrawDebugAttackSector(GetActorLocation(), CurrentAttackData.AttackRange, CurrentAttackData.AttackAngle, FColor::Red);
+
+	const FVector MyLocation = GetActorLocation();
+	const FVector MyForwardVector = GetActorForwardVector();
+	
+	// 6. 오버랩된 모든 액터에게 데미지 적용
+	for (AActor* OverlappedActor : OverlappedActors)
+	{
+		// 몬스터로부터 타겟을 향하는 방향 벡터를 구합니다.
+		const FVector DirectionToTarget = (OverlappedActor->GetActorLocation() - MyLocation).GetSafeNormal();
+
+		// 3. 몬스터의 정면 방향과 타겟 방향 사이의 각도를 계산합니다.
+		// FVector::DotProduct는 두 벡터 사이 각도의 코사인 값을 반환합니다.
+		const float DotProduct = FVector::DotProduct(MyForwardVector, DirectionToTarget);
+		// 데이터 테이블에 설정된 부채꼴의 절반 각도에 해당하는 코사인 임계값을 구합니다.
+		const float AngleThreshold = FMath::Cos(FMath::DegreesToRadians(CurrentAttackData.AttackAngle / 2.0f));
+
+		
+		// 4. 만약 두 벡터 사이 각도의 코사인 값이 임계값보다 크거나 같다면,
+		//    이것은 타겟이 부채꼴 각도 내에 있다는 의미입니다.
+		if (DotProduct >= AngleThreshold)
+		{
+			// 5. 부채꼴 범위 안에 있는 타겟 중, 아직 피해를 입지 않은 대상에게만 데미지를 적용합니다.
+			if (!HitActorsInSwing.Contains(OverlappedActor))
+			{
+				UGameplayStatics::ApplyDamage(OverlappedActor, FinalDamage, GetController(), this, nullptr);
+				HitActorsInSwing.Add(OverlappedActor);
+				
+				// [추가] 실제로 맞은 대상은 초록색 선으로 연결하여 명확하게 표시
+				DrawDebugLine(GetWorld(), GetActorLocation(), OverlappedActor->GetActorLocation(), FColor::Green, false, 2.0f, 0, 2.0f);
+			}
+		}
+	}
+}
+
+void AWTMonsterBase::FireShadowBolt()
+{
+}
+
+void AWTMonsterBase::DrawDebugAttackSector(const FVector& Center, float Radius, float Angle, const FColor& Color)
+{
+	const int32 NumSegments = 20; // 부채꼴의 호를 몇 개의 선으로 그릴지 결정 (많을수록 부드러움)
+	const float AngleIncrement = FMath::DegreesToRadians(Angle / NumSegments);
+	const FVector Forward = GetActorForwardVector();
+
+	// 부채꼴의 시작 방향 벡터 계산 (몬스터 정면에서 -Angle/2 만큼 회전)
+	FVector StartDirection = Forward.RotateAngleAxis(-Angle / 2.0f, FVector::UpVector);
+
+	FVector PrevPoint = Center + StartDirection * Radius;
+
+	// 루프를 돌면서 짧은 선들을 이어 붙여 호(arc)를 그립니다.
+	for (int32 i = 1; i <= NumSegments; ++i)
+	{
+		FVector CurrentDirection = StartDirection.RotateAngleAxis(FMath::RadiansToDegrees(AngleIncrement * i), FVector::UpVector);
+		FVector CurrentPoint = Center + CurrentDirection * Radius;
+		DrawDebugLine(GetWorld(), PrevPoint, CurrentPoint, Color, false, 2.0f, 0, 1.0f);
+		PrevPoint = CurrentPoint;
+	}
+
+	// 부채꼴의 양쪽 끝을 중심으로 연결하는 선을 그립니다.
+	DrawDebugLine(GetWorld(), Center, Center + StartDirection * Radius, Color, false, 2.0f, 0, 1.0f);
+	DrawDebugLine(GetWorld(), Center, PrevPoint, Color, false, 2.0f, 0, 1.0f);
+}
+
+
 void AWTMonsterBase::AttackActionEnd(class UAnimMontage* TargetMontage, bool IsProperlyEnded)
 {
 	// 캐릭터 무브먼트 컴포넌트 모드 복구.
@@ -275,10 +383,8 @@ void AWTMonsterBase::BeginPlay()
 		}
 		
 		UBlackboardComponent* Blackboard = AIController->GetBlackboardComponent();
-		UE_LOG(LogTemp, Warning, TEXT("AI Controller created"));
 		if (Blackboard)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("AI Controller created"));
 			// [핵심 로직] "CombatBTAsset"이라는 키에 전투 서브 트리 애셋 정보를 저장
 			Blackboard->SetValueAsObject(TEXT("CombatBTAsset"), CurrentMonsterData.CombatBehaviorTree);
 		}

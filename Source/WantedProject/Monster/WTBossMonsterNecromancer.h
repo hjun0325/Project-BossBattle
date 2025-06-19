@@ -38,6 +38,8 @@ protected:
 
 	// SummonSkill.
 	virtual void SummonSkill() override;
+
+	virtual void FireShadowBolt() override;
 	
 	// 찾은 ObjectPoolManager를 저장할 포인터 변수
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pool")
@@ -57,4 +59,11 @@ private:
 	/*// 순간이동 시 사용할 파티클 이펙트
 	UPROPERTY(EditDefaultsOnly, Category = "Boss")
 	TObjectPtr<class UParticleSystem> TeleportEffect;*/
+	
+	// 마법 구체.
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AWTShadowBolt> BoltClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AActor> ActorClass;
 };

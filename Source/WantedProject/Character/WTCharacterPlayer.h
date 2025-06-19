@@ -97,6 +97,15 @@ protected:
 
 	// 궁극기 스킬 화살 발사하는 함수.
 	virtual void UlitmateSkillArrow() override;
+
+	// 몬스터의 공격을 '수신'
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	// 죽음 상태 설정 함수.
+	virtual void SetDead();
+
+	// 죽는 애니메이션 재생 함수.
+	void PlayDeadAnimation();
 	
 protected:
 	// Camera Section.
@@ -136,6 +145,10 @@ protected:
 	ECharacterControlType CurrentCharacterControlType;
 
 	EUltimateSkillState CurrentSkillState;
+
+	// 죽음 몽타주 애셋.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> DeadMontage;
 	
 	// 공격 몽타주 애셋.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation, meta = (AllowPrivateAccess = "true"))

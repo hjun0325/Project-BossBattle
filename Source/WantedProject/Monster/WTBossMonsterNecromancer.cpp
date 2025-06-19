@@ -5,6 +5,7 @@
 #include "MonsterStat/WTMonsterStatComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AI/WTAIController.h"
+#include "Item/WTShadowBolt.h"
 #include "Manager/ObjectPoolManager.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -16,6 +17,14 @@ AWTBossMonsterNecromancer::AWTBossMonsterNecromancer()
 	if (NecromancerMeshRef.Object)
 	{
 		GetMesh()->SetSkeletalMesh(NecromancerMeshRef.Object);
+	}
+
+	// 마법 구체 액터 설정.
+	static ConstructorHelpers::FClassFinder<AWTShadowBolt> BoltClassRef(
+		TEXT("/Game/WantedProject/BluePrint/BP_WTShadowBolt.BP_WTShadowBolt_C"));
+	if (BoltClassRef.Class)
+	{
+		BoltClass = BoltClassRef.Class;
 	}
 
 	// 기본값 설정.
@@ -91,6 +100,43 @@ void AWTBossMonsterNecromancer::SummonSkill()
 	}
 }
 
+void AWTBossMonsterNecromancer::FireShadowBolt()
+{
+	// 화살이 발사될 소켓에서 위치를 얻음.
+	FVector SocketLocation = GetMesh()->GetSocketLocation("BoltSocket");
+
+	// 발사 위치 설정.
+	FVector SpawnLocation = SocketLocation;
+
+	// 캐릭터의 현재 회전값을 발사체 회전값으로 사용.
+	FRotator SpawnRotation = GetActorRotation();
+	
+	// 액터 스폰 파라미터 설정.
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	SpawnParams.Owner = this;           // 소유자 설정 (누가 발사했는지 식별)
+	SpawnParams.Instigator = this;      // Instigator 설정 (피해 판정에 사용됨)
+	
+	// ArrowClass 타입의 화살 액터를 월드에 스폰.
+	GetWorld()->SpawnActor<AWTShadowBolt>(BoltClass, SpawnLocation, SpawnRotation, SpawnParams);
+
+	/*// 나이아가라 이펙트를 발사 위치에서 재생.
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),                 // 월드 참조
+		NSArrowCast,               // 사용할 이펙트 시스템
+		FVector(SocketLocation),   // 재생 위치
+		FRotator(GetActorRotation()), // 회전 방향
+		FVector(1.0f, 1.0f, 1.0f), // 스케일
+		true                       // 자동 소멸 여부
+	);*/
+	
+	/*// 화살 발사 사운드를 현재 캐릭터 위치에서 재생.
+	UGameplayStatics::PlaySoundAtLocation(this, ArrowCastCue, GetActorLocation());*/
+
+	// 공격 중 이동을 멈췄었다면, 다시 걷기 모드로 이동 재활성화.
+	//GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+}
+
 // 2페이즈 진입 로직을 처리하는 함수.
 void AWTBossMonsterNecromancer::EnterPhase2()
 {
@@ -98,7 +144,6 @@ void AWTBossMonsterNecromancer::EnterPhase2()
 
 	// 포효 몽타주 및 이펙트 사운드 출력.
 	// 시네마틱 구현. 전환 연출.
-	UE_LOG(LogTemp, Warning, TEXT("%s has entered Phase 2!"), *GetName());
 
 	// --- AI에게 상태 변화를 알림. ---
 	AWTAIController* MyAIController = Cast<AWTAIController>(GetController());

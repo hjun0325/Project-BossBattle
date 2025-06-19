@@ -7,6 +7,7 @@
 #include "Monster/WTMonsterData.h"
 #include "Interface/WTCharacterWidgetInterface.h"
 #include "Interface/WTMonsterAIInterface.h"
+#include "Interface/WTMonsterAttackInterface.h"
 #include "WTMonsterBase.generated.h"
 
 class UWTMonsterStatComponent;
@@ -16,14 +17,15 @@ UCLASS()
 class WANTEDPROJECT_API AWTMonsterBase :
 public ACharacter,
 public IWTCharacterWidgetInterface,
-public IWTMonsterAIInterface
+public IWTMonsterAIInterface,
+public IWTMonsterAttackInterface
 {
 	GENERATED_BODY()
 
 public:
 	AWTMonsterBase();
 	
-	virtual void  PostInitializeComponents() override;
+	virtual void PostInitializeComponents() override;
 	virtual void BeginPlay() override;
 
 	// 데미지 처리 함수.
@@ -51,6 +53,11 @@ public:
 
 	/*// AI가 공격을 할 때 사용할 함수.
 	virtual void AttackByAI() override;*/
+
+	// AnimNotify에서 호출할 실제 데미지 판정 함수
+	virtual void AttackHitCheck() override;
+
+	virtual void FireShadowBolt() override;
 	
 protected:
 	// 죽음 상태 설정 함수.
@@ -90,4 +97,16 @@ protected:
 	// 데이터 테이블에서 읽어온 이 몬스터의 모든 정보를 저장할 변수.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Data")
 	FMonsterData CurrentMonsterData;
+
+private:
+
+	// 현재 실행 중인 근접 공격의 인덱스를 저장할 멤버 변수
+	int32 CurrentMeleeAttackIndex;
+
+	// 한 번의 공격에 여러 번 피해를 주는 것을 방지하기 위한 변수
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> HitActorsInSwing;
+
+	// 디버깅 목적으로, 지정된 위치에 부채꼴을 그리는 헬퍼 함수
+	void DrawDebugAttackSector(const FVector& Center, float Radius, float Angle, const FColor& Color);
 };

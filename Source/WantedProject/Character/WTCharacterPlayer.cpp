@@ -124,6 +124,14 @@ AWTCharacterPlayer::AWTCharacterPlayer()
 			UltimateSkillAction = UltimateSkillActionRef.Object;
 		}
 	}
+
+	// 죽음 액션 몽타주 애셋 설정.
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> DeadMontageRef(
+		TEXT("/Game/WantedProject/Animation/AM_PlayerDead.AM_PlayerDead"));
+	if (DeadMontageRef.Object)
+	{
+		DeadMontage = DeadMontageRef.Object;
+	}
 	
 	// 기본 공격 액션 몽타주 애셋 설정.
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> AttackMontageRef(
@@ -224,6 +232,8 @@ void AWTCharacterPlayer::BeginPlay()
 
 	// 입력 설정.
 	SetCharacterControl(CurrentCharacterControlType);
+	
+	Stat->OnHpZero.AddUObject(this, &AWTCharacterPlayer::SetDead);
 }
 
 void AWTCharacterPlayer::Tick(float DeltaTime)
@@ -612,8 +622,6 @@ void AWTCharacterPlayer::UltimateSkillFiring()
 // ----------------------Test-----------------------
 void AWTCharacterPlayer::LineTraceSingle()
 {
-	UE_LOG(LogTemp, Log, TEXT("LineTraceSingle"));
-	
 	// 충돌 결과를 저장할 구조체.
 	FHitResult OutHitResult;
 	
@@ -738,4 +746,70 @@ void AWTCharacterPlayer::SetupHUDWidget(class UWTHUDWidget* InHUDWidget)
 
 void AWTCharacterPlayer::UlitmateSkillArrow()
 {
+}
+
+float AWTCharacterPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	class AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	
+	Stat->ApplyDamage(DamageAmount);
+
+	/*// 스탯 컴포넌트가 유효한지 확인합니다.
+	if (Stat)
+	{
+		// 스탯 컴포넌트에 최종 데미지를 전달하여 HP를 깎습니다.
+		Stat->ApplyDamage(ActualDamage);
+
+		// 만약 이 공격으로 인해 HP가 0 이하가 되었다면,
+		if (Stat->GetCurrentHp())
+		{
+			// 사망 처리 함수를 호출합니다.
+			SetDead();
+		}
+		else
+		{
+			// 아직 살아있다면, 피격 애니메이션(몽타주)을 재생합니다.
+			if (HitReactMontage)
+			{
+				PlayAnimMontage(HitReactMontage);
+			}
+		}
+	}*/
+    
+	// 로그를 찍어 데미지가 정상적으로 들어오는지 확인합니다.
+	UE_LOG(LogTemp, Log, TEXT("Player %s took %f damage. Current HP: %f"), *GetName(), DamageAmount, Stat ? Stat->GetCurrentHp() : 0.f);
+    
+	// 최종적으로 적용된 데미지 양을 반환합니다.
+	return DamageAmount;
+}
+
+void AWTCharacterPlayer::SetDead()
+{
+	// 무브먼트 컴포넌트 끄기.
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	
+	// 콜리전 끄기.
+	SetActorEnableCollision(false);
+	
+	// 죽는 애니메이션 재생.
+	PlayDeadAnimation();
+
+	// 죽었을 때 HpBar(위젯) 사라지도록 처리.
+	HpBar->SetHiddenInGame(true);
+}
+
+void AWTCharacterPlayer::PlayDeadAnimation()
+{
+	// 몽타주 재생.
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		// 이미 재생 중인 몽타주가 있다면, 모두 종료.
+		AnimInstance->StopAllMontages(0.0f);
+
+		// 죽음 몽타주 재생.
+		const float PlayRate = 1.0f;
+		AnimInstance->Montage_Play(DeadMontage, PlayRate);   
+	}
 }

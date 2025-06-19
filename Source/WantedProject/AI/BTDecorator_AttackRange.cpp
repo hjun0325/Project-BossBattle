@@ -47,8 +47,6 @@ bool UBTDecorator_AttackRange::CalculateRawConditionValue(UBehaviorTreeComponent
 
 	// 캐릭터와의 거리가 공격 가능거리보다 가까운지 확인 후 결과 반환.
 	bResult = (DistanceToTarget <= AttackRangeWithRadius);
-
-	UE_LOG(LogTemp, Log, TEXT("DistanceToTarget: %f, AttackRangeWithRadius: %f"), DistanceToTarget, AttackRangeWithRadius);
 	
 	return bResult;
 }

@@ -55,8 +55,6 @@ EBTNodeResult::Type UBTTask_RangedAttack::ExecuteTask(UBehaviorTreeComponent& Ow
 
 	// Min과 Max 사이에서 랜덤한 인덱스를 설정.
 	const int32 RandomAttackIndex = FMath::RandRange(MinAttackIndex, MaxAttackIndex);
-
-	UE_LOG(LogTemp, Log, TEXT("Ranged : %d"), RandomAttackIndex);
 	
 	// 몬스터의 근거리 공격 함수를 호출
 	AIPawn->RangedAttack(RandomAttackIndex);
